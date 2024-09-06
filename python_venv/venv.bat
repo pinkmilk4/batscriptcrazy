@@ -20,10 +20,7 @@ set venvRequirements=%workingDir%\requirements.txt
 @REM create virtual environment
 if exist %venv% (
     echo cleaning up environment
-    ( call :deactivate_venv %venv% && echo virtual environment deactivated ) || (
-        echo error deactivating virtual environment for cleanup && goto :eof 
-    )
-    ( rmdir /q /s %venv% && echo virtual environment cleared) || (
+    ( call :deactivate_venv && rmdir /q /s %venv% ) || (
         echo error cleaning up virtual environment && goto :eof 
     )
 )
