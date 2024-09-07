@@ -8,9 +8,9 @@ set venvRequirements=%workingDir%\requirements.txt
 
 @REM find python alias for system
 (
-    call :check_system_alias python3 && set pythonCmd=python3 
+    call :check_system_alias python3 && set pythonCmd=python3
 ) || (
-    call :check_system_alias python && set pythonCmd=python 
+    call :check_system_alias python && set pythonCmd=python
 ) || (
     call :check_system_alias py && set pythonCmd=py
 ) || (
@@ -61,6 +61,20 @@ for /f "tokens=2,3,4 delims=. " %%a in ("%minimumPythonVersion%") do (
 echo virtual environment ready
 goto :eof
 
+:check_system_alias
+    ( where %~1 2> nul 1> nul && exit /b 0 ) || ( exit /b 1 )
+
+:check_venv_alias
+    if exist %venv%\Scripts\%~1.exe ( exit /b 0 ) else ( exit /b 1 )
+
+:check_venv_activated
+    for /f "delims= " %%i in ('where %pythonCmd%') do (
+        if %%i == %venv%\Scripts\python.exe (
+            set /A %~1=1 && exit /b 0
+        )
+    )
+    set /A %~1=0 && exit /b 0
+
 :activate_venv
     if not exist %venv%\Scripts\activate.bat (
         echo error can't find virtual environment activate script && exit /b 1
@@ -71,20 +85,6 @@ goto :eof
         echo error could not activate virtual env && exit /b 1
     )
     echo virtual env activated && exit /b 0
-
-:check_venv_activated
-    for /f "delims= " %%i in ('where %pythonCmd%') do (
-        if %%i == %venv%\Scripts\python.exe (
-            set /A %~1=1 && exit /b 0
-        )
-    )
-    set /A %~1=0 && exit /b 0
-
-:check_system_alias
-    where %~1 2> nul 1> nul && exit /b 0 || exit /b 1
-
-:check_venv_alias
-    if exist %venv%\Scripts\%~1.exe ( exit /b 0 ) else ( exit /b 1 )
 
 :deactivate_and_exit
     if exist %venv%\Scripts\deactivate.bat (
