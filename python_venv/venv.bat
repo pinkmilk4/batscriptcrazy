@@ -1,107 +1,89 @@
 @echo off
-setlocal enabledelayedexpansion
 
-@REM working directory is python_venv
-set workingDir=%cd%
-set venv=%workingDir%\venv
-set venvRequirements=%workingDir%\requirements.txt
+( call :cleanup_venv ) 
+( call :set_alias python3 || call :set_alias python || call :set_alias py )
 
-@REM find python alias for system
-(
-    call :check_system_alias python3 && set pythonCmd=python3
-) || (
-    call :check_system_alias python && set pythonCmd=python
-) || (
-    call :check_system_alias py && set pythonCmd=py
-) || (
-    echo error could not find python.exe in system path && goto :goodbye
+if not defined PYTHON (
+    echo Error, could not detect valid python in system path && goto :eof
+) 
+
+echo Creating virtual environment
+
+set VIRTUAL_ENV=%HOMEPATH%\.venv
+
+( %PYTHON% -m venv %VIRTUAL_ENV% && echo Virtual environment created ) || (
+    echo Error, could not create environment && goto :eof
 )
 
-@REM check python version supports virtual environments
-set minimumPythonVersion=Python 3.5
-for /f "delims=" %%v in ('%pythonCmd% --version') do set pythonVersion=%%v
-if not defined pythonVersion (
-    echo error detecting pythonVersion && goto :goodbye
+if not exist %VIRTUAL_ENV%\Scripts\python.exe (
+    echo Error, something went wrong creating environment (python.exe missing) && goto :eof
 )
-for /f "tokens=2,3,4 delims=. " %%a in ("%minimumPythonVersion%") do (
-    for /f "tokens=2,3,4 delims=. " %%i in ('%pythonCmd% --version') do (
-        if %%i lss %%a (
-            echo error upgrade python to version %minimumPythonVersion% && goto :goodbye
+
+if exist %VIRTUAL_ENV%\Scripts\activate.bat (
+    set VIRTUAL_ENV_ACTIVATE=%VIRTUAL_ENV%\Scripts\activate.bat
+) else (
+    echo Error, something went wrong creating environment (activate.bat missing) && goto :eof
+)
+
+if exist %VIRTUAL_ENV%\Scripts\deactivate.bat (
+    set VIRTUAL_ENV_DEACTIVATE=%VIRTUAL_ENV%\Scripts\deactivate.bat
+) else (
+    echo Error, something went wrong creating environment (deactivate.bat missing) && goto :eof
+)
+
+( call :activate ) || ( echo Error, something went wrong activating environment && goto :eof )
+
+echo Starting package installation
+for /f "delims=" %%i in ('where %PYTHON%') do (
+    if %%i == %VIRTUAL_ENV%\Scripts\python.exe ( 
+        set PYTHON=%%i
+        %%i -m pip install -r requirements.txt > nul && %%i -m pip list || (
+            echo Error installing packages && call :cleanup_venv && goto :eof
         )
-        if %%j lss %%b (
-            echo error upgrade python to version %minimumPythonVersion% && goto :goodbye
-        )
-        echo using %pythonVersion%
     )
 )
 
-@REM create virtual environment
-( %pythonCmd% -m venv --clear %venv% && echo virtual environment created ) || (
-    echo error creating virtual environment && goto :goodbye
+if exist test.py (
+    echo Starting quick test && call %PYTHON% test.py 2> nul && echo Test ok! || (
+        echo Test failed... && call :cleanup_venv && goto :eof
+    )
 )
 
-@REM find alias for the virtual environment
-(
-    call :check_venv_alias python3 && set pythonCmd=python3
-) || (
-    call :check_venv_alias python && set pythonCmd=python
-) || (
-    call :check_venv_alias py && set pythonCmd=py
-) || (
-    echo error could not find python.exe in virtual environment && goto :goodbye
-)
-
-@REM activate virtual environment and install dependencies
-( call :activate_venv && echo starting package installation ) || ( goto :goodbye )
-
-( %pythonCmd% -m pip install -r %venvRequirements% > nul && %pythonCmd% -m pip list ) || (
-    echo error installing packages, exiting && goto :deactivate_and_exit
-)
-
-echo virtual environment ready
+echo Python virtual environment ready and active
 goto :eof
 
-:check_system_alias
-    ( where %~1 2> nul 1> nul && exit /b 0 ) || ( exit /b 1 )
-
-:check_venv_alias
-    if exist %venv%\Scripts\%~1.exe ( exit /b 0 ) else ( exit /b 1 )
-
-:check_venv_activated
-    for /f "delims= " %%i in ('where %pythonCmd%') do (
-        if %%i == %venv%\Scripts\python.exe (
-            set /A %~1=1 && exit /b 0
-        )
+:cleanup_venv
+    if defined VIRTUAL_ENV (
+        echo Cleaning up old environment
+        ( call :deactivate ) || ( echo Error, something went wrong deactivating environment )
+        rmdir /s /q %VIRTUAL_ENV%
     )
-    set /A %~1=0 && exit /b 0
+    set PYTHON= 
+    set VIRTUAL_ENV=
+    set VIRTUAL_ENV_ACTIVATE=
+    set VIRTUAL_ENV_DEACTIVATE=
+    exit /b 0
 
-:activate_venv
-    if not exist %venv%\Scripts\activate.bat (
-        echo error can't find virtual environment activate script && exit /b 1
-    )
-    call %venv%\Scripts\activate.bat
-    call :check_venv_activated isActive
-    if !isActive! == 0 (
-        echo error could not activate virtual env && exit /b 1
-    )
-    echo virtual env activated && exit /b 0
+:activate 
+    call %VIRTUAL_ENV_ACTIVATE% && echo Virtual environment activated && exit /b 0 || exit /b 1
 
-:deactivate_and_exit
-    if exist %venv%\Scripts\deactivate.bat (
-        call :check_venv_activated isActive
-        if !isActive! == 1 (
-            call %venv%\Scripts\deactivate.bat
-            call :check_venv_activated isActive
-            if !isActive! == 1 (
-                echo error could not deactivate virtual env
-            ) else (
-                echo virtual env deactivated
+:deactivate
+    call %VIRTUAL_ENV_DEACTIVATE% && echo Virtual environment deactivated && exit /b 0 || exit /b 1
+    
+:set_alias 
+    setlocal
+    ( where %~1 2> nul 1> nul && for /f "delims=" %%a in ('%~1 --version') do set pythonVersion=%%a ) || endlocal && exit /b 1
+    set minimumPythonVersion=Python 3.5
+    for /f "tokens=2,3,4 delims=. " %%a in ("%minimumPythonVersion%") do (
+        for /f "tokens=2,3,4 delims=. " %%i in ("%pythonVersion%") do (
+            if %%i geq %%a (
+                if %%j geq %%b (
+                    echo System Alias: %~1 && echo Python Version: %pythonVersion% 
+                    endlocal && set PYTHON=%~1 && exit /b 0
+                )
             )
         )
     )
-    goto :goodbye
+    echo Warning, found python installed under alias %~1 with version %pythonVersion% but needs upgrade to %minimumPythonVersion% 
+    endlocal && exit /b 1
 
-:goodbye
-    echo exiting && goto :eof
-
-endlocal
