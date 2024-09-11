@@ -3,4 +3,4 @@ import matplotlib.pyplot as plt
 import pandas 
 
 
-print("testing imports installed ok!")
+print("Testing imports installed ok!")

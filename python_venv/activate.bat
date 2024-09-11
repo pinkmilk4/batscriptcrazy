@@ -9,7 +9,7 @@ if not exist %VIRTUAL_ENV%\Scripts\activate.bat (
 )
 
 if not exist %VIRTUAL_ENV%\Scripts\python.exe (
-    echo Error, could not activate virtual environment (python.exe missing) && goto :eof
+    echo Error, could not activate virtual environment (python.exe missing) && exit /b 1
 )
 
 call %VIRTUAL_ENV%\Scripts\activate.bat
