@@ -7,9 +7,7 @@ if not defined PYTHON (
     echo Error, could not detect valid python in system path && goto :eof
 ) 
 
-echo Creating virtual environment
-
-set VIRTUAL_ENV=%HOMEPATH%\.venv
+set VIRTUAL_ENV=%USERPROFILE%\venv
 
 ( %PYTHON% -m venv %VIRTUAL_ENV% && echo Virtual environment created ) || (
     echo Error, could not create environment && goto :eof
@@ -19,29 +17,13 @@ if not exist %VIRTUAL_ENV%\Scripts\python.exe (
     echo Error, something went wrong creating environment (python.exe missing) && goto :eof
 )
 
-if exist %VIRTUAL_ENV%\Scripts\activate.bat (
-    set VIRTUAL_ENV_ACTIVATE=%VIRTUAL_ENV%\Scripts\activate.bat
-) else (
-    echo Error, something went wrong creating environment (activate.bat missing) && goto :eof
-)
-
-if exist %VIRTUAL_ENV%\Scripts\deactivate.bat (
-    set VIRTUAL_ENV_DEACTIVATE=%VIRTUAL_ENV%\Scripts\deactivate.bat
-) else (
-    echo Error, something went wrong creating environment (deactivate.bat missing) && goto :eof
-)
-
-( call :activate ) || ( echo Error, something went wrong activating environment && goto :eof )
+call ./activate.bat || ( call :cleanup_venv && goto :eof )
 
 echo Starting package installation
-for /f "delims=" %%i in ('where %PYTHON%') do (
-    if %%i == %VIRTUAL_ENV%\Scripts\python.exe ( 
-        set PYTHON=%%i
-        %%i -m pip install -r requirements.txt > nul && %%i -m pip list || (
-            echo Error installing packages && call :cleanup_venv && goto :eof
-        )
-    )
+%PYTHON% -m pip install -r requirements.txt > nul && %PYTHON% -m pip list || (
+    echo Error, installing packages failed && call :cleanup_venv && goto :eof
 )
+echo Installation complete
 
 if exist test.py (
     echo Starting quick test && call %PYTHON% test.py 2> nul && echo Test ok! || (
@@ -53,22 +35,13 @@ echo Python virtual environment ready and active
 goto :eof
 
 :cleanup_venv
+    set PYTHON=
     if defined VIRTUAL_ENV (
-        echo Cleaning up old environment
-        ( call :deactivate ) || ( echo Error, something went wrong deactivating environment )
+        echo Cleaning up environment %VIRTUAL_ENV%
+        call ./deactivate.bat
         rmdir /s /q %VIRTUAL_ENV%
     )
-    set PYTHON= 
-    set VIRTUAL_ENV=
-    set VIRTUAL_ENV_ACTIVATE=
-    set VIRTUAL_ENV_DEACTIVATE=
     exit /b 0
-
-:activate 
-    call %VIRTUAL_ENV_ACTIVATE% && echo Virtual environment activated && exit /b 0 || exit /b 1
-
-:deactivate
-    call %VIRTUAL_ENV_DEACTIVATE% && echo Virtual environment deactivated && exit /b 0 || exit /b 1
     
 :set_alias 
     setlocal
@@ -78,7 +51,7 @@ goto :eof
         for /f "tokens=2,3,4 delims=. " %%i in ("%pythonVersion%") do (
             if %%i geq %%a (
                 if %%j geq %%b (
-                    echo System Alias: %~1 && echo Python Version: %pythonVersion% 
+                    echo Python Version: %pythonVersion% 
                     endlocal && set PYTHON=%~1 && exit /b 0
                 )
             )
