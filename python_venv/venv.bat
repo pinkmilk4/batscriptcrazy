@@ -2,13 +2,11 @@
 
 ( call :cleanup_venv ) 
 ( call :set_alias python3 || call :set_alias python || call :set_alias py )
-
 if not defined PYTHON (
     echo Error, could not detect valid python in system path && goto :eof
 ) 
 
 set VIRTUAL_ENV=%USERPROFILE%\venv
-
 ( %PYTHON% -m venv %VIRTUAL_ENV% && echo Virtual environment created ) || (
     echo Error, could not create environment && goto :eof
 )
@@ -36,7 +34,7 @@ goto :eof
 
 :cleanup_venv
     set PYTHON=
-    if defined VIRTUAL_ENV (
+    if exist %VIRTUAL_ENV% (
         echo Cleaning up environment %VIRTUAL_ENV%
         call ./deactivate.bat
         rmdir /s /q %VIRTUAL_ENV%
