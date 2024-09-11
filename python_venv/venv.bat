@@ -6,7 +6,10 @@ if not defined PYTHON (
     echo Error, could not detect valid python in system path && goto :eof
 ) 
 
-set VIRTUAL_ENV=%USERPROFILE%\venv
+call .\env.bat INIT && echo Creating virtual environment || (
+    echo Error, could not set environment variables && goto :eof
+)
+
 ( %PYTHON% -m venv %VIRTUAL_ENV% && echo Virtual environment created ) || (
     echo Error, could not create environment && goto :eof
 )
@@ -18,7 +21,7 @@ if not exist %VIRTUAL_ENV%\Scripts\python.exe (
 call ./activate.bat || ( call :cleanup_venv && goto :eof )
 
 echo Starting package installation
-%PYTHON% -m pip install -r requirements.txt > nul && %PYTHON% -m pip list || (
+%PYTHON% -m pip install -r %VIRTUAL_ENV_REQUIREMENTS% > nul && %PYTHON% -m pip list || (
     echo Error, installing packages failed && call :cleanup_venv && goto :eof
 )
 echo Installation complete
@@ -34,7 +37,7 @@ goto :eof
 
 :cleanup_venv
     set PYTHON=
-    if exist %VIRTUAL_ENV% (
+    if defined VIRTUAL_ENV (
         echo Cleaning up environment %VIRTUAL_ENV%
         call ./deactivate.bat
         rmdir /s /q %VIRTUAL_ENV%
@@ -58,3 +61,6 @@ goto :eof
     echo Warning, found python installed under alias %~1 with version %pythonVersion% but needs upgrade to %minimumPythonVersion% 
     endlocal && exit /b 1
 
+:INIT_ERROR
+echo Error initializing environment variables
+goto :eof
