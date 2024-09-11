@@ -1,5 +1,7 @@
 @echo off
 
+cd "%~dp0" 
+
 if "%~1"=="INIT" (
     for /f "tokens=1,2 delims==" %%a in ('type .env') do call set %%a=%%b
 
