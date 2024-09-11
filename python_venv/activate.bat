@@ -1,7 +1,5 @@
 @echo off
 
-cd "%~dp0" 
-
 call .\env.bat INIT || goto :ERROR
 
 if not exist %VIRTUAL_ENV%\Scripts\activate.bat (

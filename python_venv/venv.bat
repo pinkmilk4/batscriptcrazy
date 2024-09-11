@@ -1,7 +1,5 @@
 @echo off
 
-cd "%~dp0" 
-
 ( call :cleanup_venv ) 
 ( call :set_alias python3 || call :set_alias python || call :set_alias py )
 if not defined PYTHON (
